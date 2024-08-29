@@ -1,1 +1,1 @@
-# water-quality-sensor
+# Water Quality Sensor
