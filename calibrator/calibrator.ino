@@ -7,7 +7,7 @@
 
 const int baudRate = 9600;     // Baud rate for serial communication
 const int delayTime = 1000;    // Delay time in milliseconds
-const int analogPin = A1;      // Analog pin to read from
+const int analogPin = A0;      // Analog pin to read from
 
 uint32_t raw;
 
@@ -17,7 +17,7 @@ void setup() {
 
 void loop() {
   raw = analogRead(analogPin);  // Read from the defined analog pin
-  float voltage = raw * (VREF / ADC_RES);  // Convert raw data to voltage in mV
+  float voltage = raw * (VREF / (float)ADC_RES);  // Convert raw data to voltage in mV
 
   // Construct the output message
   String outputMessage = "Raw: " + String(raw) + "\tVoltage (mV): " + String(voltage, 2);  // Display 2 decimal places
