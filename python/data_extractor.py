@@ -1,48 +1,72 @@
 import serial
 import pandas as pd
 import time
+import re  # Regular expression library for data parsing
 
+# Serial port configuration
 serial_port = "/dev/tty.usbmodem101"
 baud_rate = 115200
 timeout = 2
 
-# Establishing serial connection
-ser = serial.Serial(serial_port, baud_rate, timeout=timeout)
+# Attempt to establish serial connection
+try:
+    ser = serial.Serial(serial_port, baud_rate, timeout=timeout)
+    print("Serial connection established.")
+except serial.SerialException as e:
+    print(f"Error opening serial port: {e}")
+    exit(1)
 
 # Data rows
 data = []
 
 try:
-    time.sleep(2)
+    # Wait for Arduino to reset and start sending data
+    time.sleep(2)  # Increase this if data is delayed
 
     while True:
+        # Read a line of data from the serial port
         line = ser.readline().decode('utf-8').strip()
+
+        # Debugging output to check if a line is received
         if line:
-            print("Raw Data Line:", line)  # Print raw data line
+            print("Raw Data Line:", line)  # Print the received line from Arduino
 
-            # Remove labels from the line and split values by the tab or space separator
-            line = line.replace("Temperature:", "").replace("ADC RAW:", "").replace("ADC Voltage (mV):", "").replace("DO:", "")
-            values = [v.strip() for v in line.split('\t')]
+            # Regular expression to match the format: "Temperature: 20.94 °C | TDS Value: 0.00 ppm | pH: 6.67"
+            match = re.search(
+                r"Temperature:\s*([-+]?\d*\.\d+|\d+)\s*°C\s*\|\s*TDS Value:\s*([-+]?\d*\.\d+|\d+)\s*ppm\s*\|\s*pH:\s*([-+]?\d*\.\d+|\d+)",
+                line)
 
-            if len(values) == 3:
+            if match:
                 try:
-                    temp, adc_raw, adc_voltage, DO = values
+                    # Extract temperature, TDS, and pH values from the matched groups
+                    temp = float(match.group(1))
+                    tds_value = float(match.group(2))
+                    ph_value = float(match.group(3))
+
+                    # Append to data list as a dictionary
                     data.append({
-                        'Temperature': float(temp),
-                        'Dissolved Oxygen': float(DO),
-                        'ADC Raw': int(adc_raw),
-                        'ADC Voltage': float(adc_voltage)
+                        'Temperature (°C)': temp,
+                        'TDS Value (ppm)': tds_value,
+                        'pH': ph_value
                     })
                 except ValueError:
-                    print("Error converting data:", values)
+                    print("Error converting data:", line)
+            else:
+                print("Data format mismatch:", line)
 
-        if len(data) > 10:  # Stop after 10 readings for this example
+        else:
+            print("Empty line received")  # Indicates no data or timeout
+
+        # Stop after 10 readings for this example
+        if len(data) > 1000:
             break
 
 except KeyboardInterrupt:
     print("Stopped by user.")
 finally:
-    ser.close()  # Ensure the serial connection is closed properly
+    # Ensure the serial connection is closed properly
+    ser.close()
+    print("Serial connection closed.")
 
 # Convert collected data into a pandas DataFrame
 print("Collected Data:", data)  # Debug print to check the data list
